@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0f14">
+<title>811 Ticket Tracker</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="811 Tickets">
+<style>
+:root{
+  --bg:#0b0f14; --panel:#151b23; --panel2:#1d2530; --line:#2c3644; --text:#f2f5f8; --dim:#a7b3c2;
+  --green:#2fbf5b; --green-bg:#0f2a19; --amber:#ffc23d; --amber-bg:#33270a; --red:#ff5b4f; --red-bg:#3a1210;
+  --blue:#5cb3ff; --blue-bg:#0e2338; --accent:#ff8a1f;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:17px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;-webkit-text-size-adjust:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--blue)}
+.wrap{max-width:640px;margin:0 auto;padding:12px 12px calc(40px + env(safe-area-inset-bottom))}
+header{display:flex;align-items:center;gap:10px;padding:4px 0 10px}
+header .logo{width:44px;height:44px;border-radius:10px;background:var(--accent);color:#111;font-weight:900;display:grid;place-items:center;font-size:17px;flex:none}
+header h1{font-size:21px;margin:0;line-height:1.1}
+header .today{color:var(--dim);font-size:15px}
+header .grow{flex:1;min-width:0}
+.btn{border:2px solid var(--line);background:var(--panel2);border-radius:12px;min-height:48px;padding:8px 14px;font-weight:700;cursor:pointer;touch-action:manipulation}
+.btn:active{transform:scale(.98)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#111}
+.btn.danger{background:var(--red-bg);border-color:var(--red);color:#ffd9d6}
+.btn.good{background:var(--green-bg);border-color:var(--green);color:#d9ffe5}
+.btn.small{min-height:44px;padding:6px 12px;font-size:15px}
+.btn.block{width:100%}
+.banner{border-radius:14px;padding:12px 14px;margin:0 0 12px;border:2px solid var(--amber);background:var(--amber-bg)}
+.banner.red{border-color:var(--red);background:var(--red-bg)}
+.banner h2{font-size:17px;margin:0 0 6px}
+.banner ul{margin:0;padding-left:20px}
+.banner li{margin:2px 0}
+.banner .row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.banner .x{background:none;border:none;color:var(--text);font-size:26px;min-width:44px;min-height:44px;cursor:pointer}
+.search{width:100%;min-height:50px;border-radius:12px;border:2px solid var(--line);background:var(--panel);padding:10px 14px;font-size:17px}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:10px 0;scrollbar-width:none}
+.chip{flex:none;border:2px solid var(--line);background:var(--panel);border-radius:999px;min-height:44px;padding:6px 14px;font-weight:700;cursor:pointer}
+.chip.on{background:var(--text);color:#111;border-color:var(--text)}
+.chip .n{opacity:.75;font-weight:600;margin-left:4px}
+.empty{color:var(--dim);text-align:center;padding:28px 10px;border:2px dashed var(--line);border-radius:14px}
+.empty b{color:var(--text)}
+.card{display:flex;gap:12px;background:var(--panel);border:2px solid var(--line);border-left-width:10px;border-radius:14px;padding:12px;margin:0 0 12px}
+.card.ok{border-left-color:var(--green)}
+.card.warn{border-left-color:var(--amber);background:linear-gradient(90deg,var(--amber-bg),var(--panel) 45%)}
+.card.bad{border-left-color:var(--red);background:linear-gradient(90deg,var(--red-bg),var(--panel) 45%)}
+.card.closed{opacity:.6;border-left-color:#56606d}
+.days{flex:none;width:84px;text-align:center;align-self:flex-start;border-radius:10px;padding:6px 2px}
+.days .big{font-size:44px;font-weight:900;line-height:1}
+.days .lbl{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+.ok .days{color:var(--green)} .warn .days{color:var(--amber)} .bad .days{color:var(--red)} .closed .days{color:var(--dim)}
+.days .big.word{font-size:19px;padding-top:10px;letter-spacing:-.01em}
+.info{flex:1;min-width:0}
+.tnum{font-size:19px;font-weight:800;word-break:break-all}
+.job{font-weight:700}
+.loc,.meta{color:var(--dim);font-size:15px;word-wrap:break-word}
+.lines{margin:6px 0 2px;font-size:15px}
+.lines div{margin:2px 0}
+.pill{display:inline-block;border-radius:8px;padding:3px 8px;font-size:14px;font-weight:700;margin:3px 4px 0 0}
+.pill.blue{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue)}
+.pill.amber{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber)}
+.pill.red{background:var(--red-bg);color:#ffb3ad;border:1px solid var(--red)}
+.pill.grey{background:var(--panel2);color:var(--dim);border:1px solid var(--line)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.notes{font-size:15px;color:#d4dbe4;margin-top:4px;white-space:pre-wrap;word-wrap:break-word}
+section.box{background:var(--panel);border:2px solid var(--line);border-radius:14px;margin:14px 0;overflow:hidden}
+section.box>summary,details.box>summary{list-style:none;cursor:pointer;padding:14px;font-weight:800;min-height:52px;display:flex;align-items:center;justify-content:space-between}
+details.box{background:var(--panel);border:2px solid var(--line);border-radius:14px;margin:14px 0}
+details.box>summary::-webkit-details-marker{display:none}
+details.box>summary::after{content:"\25BE";color:var(--dim)}
+details.box[open]>summary::after{content:"\25B4"}
+.boxin{padding:0 14px 14px}
+.boxin p{margin:6px 0;color:#d4dbe4;font-size:15px}
+label.f{display:block;margin:10px 0 0;font-weight:700;font-size:15px}
+label.f .hint{font-weight:500;color:var(--dim)}
+.inp{width:100%;min-height:50px;border-radius:10px;border:2px solid var(--line);background:#0f141b;padding:10px 12px;font-size:17px;margin-top:4px}
+textarea.inp{min-height:90px;resize:vertical}
+.inp:focus,.search:focus{outline:3px solid var(--blue);outline-offset:1px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.two label.f{display:flex;flex-direction:column;justify-content:space-between}
+.rowbtn{display:flex;gap:8px;align-items:center}
+.rowbtn .inp{flex:1}
+.calc{font-size:14px;color:var(--dim);margin-top:4px}
+.calc button{background:none;border:none;color:var(--blue);font-weight:700;padding:6px 4px;min-height:36px;cursor:pointer}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;z-index:20}
+.sheet.open{display:block}
+.sheet .panel{position:absolute;inset:0;overflow-y:auto;background:var(--bg);max-width:640px;margin:0 auto;padding:12px 14px calc(30px + env(safe-area-inset-bottom))}
+.sheet .top{display:flex;align-items:center;gap:10px;position:sticky;top:-12px;background:var(--bg);padding:8px 0;z-index:2;border-bottom:1px solid var(--line)}
+.sheet .top h2{flex:1;margin:0;font-size:20px}
+.statusrow{display:flex;gap:8px;margin-top:4px}
+.statusrow label{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;min-height:48px;border:2px solid var(--line);border-radius:10px;background:var(--panel);font-weight:700;cursor:pointer}
+.statusrow input{width:20px;height:20px}
+.statusrow label:has(input:checked){border-color:var(--text);background:var(--panel2)}
+.guide{background:var(--panel);border:2px solid var(--blue);border-radius:14px;padding:12px 14px;margin:12px 0}
+.guide ol{margin:6px 0;padding-left:20px}
+.guide li{margin:5px 0}
+.callbtn{display:flex;align-items:center;justify-content:center;text-decoration:none;color:#111;background:var(--green);border-radius:12px;min-height:54px;font-weight:900;font-size:19px;margin:8px 0}
+.linkbtn{display:flex;align-items:center;justify-content:center;text-decoration:none;color:var(--text);border:2px solid var(--blue);border-radius:12px;min-height:50px;font-weight:800;margin:8px 0}
+.msg{border-radius:10px;padding:10px 12px;margin:10px 0;font-size:15px}
+.msg.warn{background:var(--amber-bg);border:1px solid var(--amber)}
+.msg.bad{background:var(--red-bg);border:1px solid var(--red)}
+.msg.ok{background:var(--green-bg);border:1px solid var(--green)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--text);color:#111;font-weight:800;padding:12px 18px;border-radius:12px;z-index:50;display:none;max-width:90vw;text-align:center}
+.small{font-size:14px;color:var(--dim)}
+.grid3{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sr{position:absolute;left:-9999px}
+.installbar{display:none;align-items:center;gap:10px;margin:0 0 12px}
+.installbar.show{display:flex}
+.installbar .hint{flex:1;font-size:14px;color:var(--dim)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">811</div>
+    <div class="grow"><h1>811 Ticket Tracker</h1><div class="today" id="todayLbl"></div></div>
+    <button class="btn primary" id="addBtn" aria-label="Add ticket">+ Add</button>
+  </header>
+
+  <div class="installbar" id="installBar"><button class="btn small" id="installBtn">Install app</button><span class="hint" id="installHint">Put 811 Tickets on your home screen</span></div>
+  <div id="banner"></div>
+
+  <input class="search" id="search" type="search" placeholder="Search ticket #, job, address, notes" autocomplete="off">
+  <div class="chips" id="chips"></div>
+  <div id="list"></div>
+
+  <details class="box" id="renewHelp">
+    <summary>SD 811 rules &amp; what to do</summary>
+    <div class="boxin" id="rulesText"></div>
+  </details>
+
+  <details class="box">
+    <summary>Backup (export / import)</summary>
+    <div class="boxin">
+      <p>Your tickets live only in this browser on this phone. Export a backup now and then (it saves a .json file to Downloads).</p>
+      <div class="grid3">
+        <button class="btn" id="exportBtn">Export backup</button>
+        <button class="btn" id="importBtn">Import backup</button>
+      </div>
+      <input type="file" id="importFile" accept=".json,application/json" class="sr">
+      <div id="backupMsg"></div>
+    </div>
+  </details>
+
+  <details class="box">
+    <summary>Settings</summary>
+    <div class="boxin">
+      <p>Defaults follow South Dakota rules. Change them if SD 811 changes the rules or your ticket says otherwise. The date on your actual ticket always wins.</p>
+      <div class="two">
+        <label class="f">Ticket good for (days)<input class="inp" type="number" min="1" max="365" id="s_life"></label>
+        <label class="f">Wait before digging (business days)<input class="inp" type="number" min="0" max="20" id="s_wait"></label>
+        <label class="f">Warn me (days before expiry)<input class="inp" type="number" min="0" max="30" id="s_warn"></label>
+        <label class="f">Call for update by (day #)<input class="inp" type="number" min="1" max="365" id="s_upd"></label>
+        <label class="f">Max updates per ticket<input class="inp" type="number" min="0" max="20" id="s_maxu"></label>
+        <label class="f">Max days from first start<input class="inp" type="number" min="1" max="999" id="s_span"></label>
+      </div>
+      <label class="f"><input type="checkbox" id="s_roll" style="width:22px;height:22px;vertical-align:middle"> Never put a start date on a weekend or holiday <span class="hint">(safer)</span></label>
+      <div class="actions"><button class="btn good" id="saveSettings">Save settings</button><button class="btn" id="resetSettings">Reset to SD defaults</button></div>
+      <div id="settingsMsg"></div>
+      <hr style="border:none;border-top:1px solid var(--line);margin:16px 0">
+      <div class="actions"><button class="btn" id="demoBtn">Load demo tickets</button><button class="btn danger" id="clearDemoBtn">Remove demo tickets</button></div>
+      <p class="small">Demo tickets are fake and marked DEMO.</p>
+    </div>
+  </details>
+  <p class="small" style="text-align:center">Not legal advice. Always go by the dates on your SD 811 ticket.</p>
+</div>
+
+<!-- Add / edit sheet -->
+<div class="sheet" id="editSheet" role="dialog" aria-modal="true">
+  <div class="panel">
+    <div class="top"><h2 id="editTitle">Add ticket</h2><button class="btn small" id="editCancel">Close</button></div>
+    <details class="box" id="pasteBox">
+      <summary>Paste ticket email (fills the form)</summary>
+      <div class="boxin">
+        <textarea class="inp" id="pasteText" placeholder="Copy the whole 811 ticket email and paste it here"></textarea>
+        <div class="actions"><button class="btn good" id="parseBtn">Fill from text</button><button class="btn small" id="pasteClear">Clear</button></div>
+        <div id="parseMsg"></div>
+      </div>
+    </details>
+    <form id="editForm" autocomplete="off">
+      <label class="f">Ticket number<input class="inp" id="f_num" inputmode="numeric" required></label>
+      <label class="f">Job / site name<input class="inp" id="f_job" placeholder="e.g. Smith service line bore"></label>
+      <label class="f">Address or location<input class="inp" id="f_loc" placeholder="Street, intersection, or legal description"></label>
+      <label class="f">Called in on<input class="inp" type="date" id="f_called" required></label>
+      <label class="f">Can dig from <span class="hint">(legal start date)</span><input class="inp" type="date" id="f_start" required></label>
+      <div class="calc" id="startCalc"></div>
+      <label class="f">Expires<input class="inp" type="date" id="f_exp" required></label>
+      <div class="calc" id="expCalc"></div>
+      <label class="f">Notes<textarea class="inp" id="f_notes" placeholder="Utilities that responded, crew, depth, etc."></textarea></label>
+      <div class="f" style="font-weight:700;margin-top:10px">Status</div>
+      <div class="statusrow">
+        <label><input type="radio" name="f_status" value="active"> Active</label>
+        <label><input type="radio" name="f_status" value="done"> Done</label>
+        <label><input type="radio" name="f_status" value="renewed"> Renewed</label>
+      </div>
+      <div id="formMsg"></div>
+      <div class="actions" style="margin-top:14px">
+        <button class="btn primary block" type="submit" id="saveBtn">Save ticket</button>
+      </div>
+      <div class="actions"><button class="btn danger block" type="button" id="deleteBtn">Delete ticket</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- Renew sheet -->
+<div class="sheet" id="renewSheet" role="dialog" aria-modal="true">
+  <div class="panel">
+    <div class="top"><h2>Renew ticket</h2><button class="btn small" id="renewCancel">Close</button></div>
+    <div id="renewInfo"></div>
+    <div class="guide" id="renewGuide"></div>
+    <form id="renewForm" autocomplete="off">
+      <div class="f" style="font-weight:700;margin-top:6px">What did you get from 811?</div>
+      <div class="statusrow">
+        <label><input type="radio" name="r_kind" value="update" checked> Update ticket</label>
+        <label><input type="radio" name="r_kind" value="new"> New ticket</label>
+      </div>
+      <label class="f">New ticket number<input class="inp" id="r_num" inputmode="numeric" required></label>
+      <label class="f">Called in on<input class="inp" type="date" id="r_called" required></label>
+      <label class="f">Can dig from<input class="inp" type="date" id="r_start" required></label>
+      <label class="f">Expires<input class="inp" type="date" id="r_exp" required></label>
+      <div class="calc" id="r_calc"></div>
+      <div id="renewMsg"></div>
+      <div class="actions" style="margin-top:14px"><button class="btn primary block" type="submit">Save new ticket &amp; mark old one renewed</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+/* ---------- storage ---------- */
+var KEY_T = "tix811.tickets.v1", KEY_S = "tix811.settings.v1", KEY_B = "tix811.bannerHidden";
+var DEFAULTS = { life:21, wait:2, warn:3, upd:19, maxUpdates:2, span:63, roll:true };
+function store(){ try { return window.localStorage; } catch(e){ return null; } }
+var mem = {};
+function lsGet(k){ var s=store(); try { return s ? s.getItem(k) : (k in mem ? mem[k] : null); } catch(e){ return null; } }
+function lsSet(k,v){ var s=store(); try { if (s) s.setItem(k,v); else mem[k]=v; return true; } catch(e){ toast("Could not save! Storage full or blocked."); return false; } }
+
+/* ---------- calendar-safe date math (no time zones) ---------- */
+// Dates are "YYYY-MM-DD" strings. Day numbers via Date.UTC so DST/time zone never shifts a day.
+function pad(n){ return (n<10?"0":"")+n; }
+function isISO(s){ return typeof s==="string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && dn(s)===dn(s); }
+function dn(s){ var p=s.split("-"); return Math.round(Date.UTC(+p[0],+p[1]-1,+p[2])/86400000); }
+function fromDn(n){ var d=new Date(n*86400000); return d.getUTCFullYear()+"-"+pad(d.getUTCMonth()+1)+"-"+pad(d.getUTCDate()); }
+function addDays(s,n){ return fromDn(dn(s)+n); }
+function diffDays(a,b){ return dn(a)-dn(b); } // a - b
+function todayISO(now){ var d=now||new Date(); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+function dow(s){ return ((dn(s)%7)+7+4)%7; } // 0=Sun (1970-01-01 was Thursday)
+var MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+var DAY=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+function nice(s){ if(!isISO(s)) return "?"; var p=s.split("-"); return DAY[dow(s)]+" "+MON[+p[1]-1]+" "+(+p[2]); }
+function niceY(s){ if(!isISO(s)) return "?"; return nice(s)+", "+s.slice(0,4); }
+
+// South Dakota legal holidays (SDCL 1-5-1) with Sat->Fri / Sun->Mon substitution.
+var holCache = {};
+function nthDow(y,m,wd,n){ var first=y+"-"+pad(m)+"-01"; var off=(wd-dow(first)+7)%7; return addDays(first, off+7*(n-1)); }
+function lastDow(y,m,wd){ var last=addDays((m===12?(y+1)+"-01-01":y+"-"+pad(m+1)+"-01"),-1); var off=(dow(last)-wd+7)%7; return addDays(last,-off); }
+function observed(s){ var w=dow(s); return w===6?addDays(s,-1):(w===0?addDays(s,1):s); }
+function holidays(y){
+  if (holCache[y]) return holCache[y];
+  var h = {};
+  [y+"-01-01",y+"-06-19",y+"-07-04",y+"-11-11",y+"-12-25"].forEach(function(d){ h[observed(d)]=1; });
+  // Jan 1 of next year falling on Saturday is observed Dec 31 of this year
+  var ny=(y+1)+"-01-01"; if (dow(ny)===6) h[addDays(ny,-1)]=1;
+  h[nthDow(y,1,1,3)]=1;  // MLK
+  h[nthDow(y,2,1,3)]=1;  // Presidents
+  h[lastDow(y,5,1)]=1;   // Memorial
+  h[nthDow(y,9,1,1)]=1;  // Labor
+  h[nthDow(y,10,1,2)]=1; // Native Americans' Day
+  h[nthDow(y,11,4,4)]=1; // Thanksgiving
+  holCache[y]=h; return h;
+}
+function isHoliday(s){ return !!holidays(+s.slice(0,4))[s]; }
+function isBiz(s){ var w=dow(s); return w!==0 && w!==6 && !isHoliday(s); }
+
+// Legal start: the wait (e.g. 48 h = 2 business days) starts 12:01 a.m. the day after the call (SDCL 49-7A-5).
+function calcStart(called, S){
+  S=S||settings; if(!isISO(called)) return "";
+  var d=called, n=0, guard=0;
+  while(n<S.wait && guard++<400){ d=addDays(d,1); if(isBiz(d)) n++; }
+  d=addDays(d,1);
+  if (S.roll){ guard=0; while(!isBiz(d) && guard++<30) d=addDays(d,1); }
+  return d;
+}
+function calcExpire(start, S){ S=S||settings; return isISO(start)?addDays(start,S.life):""; }
+function calcUpdateBy(start, S){ S=S||settings; return isISO(start)?addDays(start,Math.max(0,S.upd-1)):""; }
+
+/* ---------- state ---------- */
+var settings = loadSettings();
+var tickets = loadTickets();
+var filter = "all", query = "";
+function loadSettings(){ var s={}; try{ s=JSON.parse(lsGet(KEY_S)||"{}")||{}; }catch(e){} var o={}; for(var k in DEFAULTS) o[k]=(k in s && s[k]!==null && s[k]!=="")?s[k]:DEFAULTS[k]; return o; }
+function loadTickets(){ try{ var a=JSON.parse(lsGet(KEY_T)||"[]"); return Array.isArray(a)?a.filter(validT):[]; }catch(e){ return []; } }
+function saveTickets(){ return lsSet(KEY_T, JSON.stringify(tickets)); }
+function validT(t){ return t && typeof t==="object" && typeof t.id==="string"; }
+function uid(){ return "t"+Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+function byId(id){ for(var i=0;i<tickets.length;i++) if(tickets[i].id===id) return tickets[i]; return null; }
+
+/* ---------- status helpers ---------- */
+function info(t, today){
+  today=today||todayISO();
+  var left = isISO(t.expires)? diffDays(t.expires,today) : null;
+  var closed = t.status!=="active";
+  var level = closed ? "closed" : (left===null ? "warn" : (left<=0 ? "bad" : (left<=settings.warn ? "warn" : "ok")));
+  var startIn = isISO(t.start)? diffDays(t.start,today) : null;
+  var updBy = calcUpdateBy(t.start);
+  return { left:left, level:level, closed:closed, startIn:startIn, updBy:updBy, updLeft: updBy?diffDays(updBy,today):null };
+}
+function matchesFilter(t,f,today){
+  var i=info(t,today);
+  if(f==="all") return true;
+  if(f==="active") return t.status==="active" && i.left!==null && i.left>0;
+  if(f==="soon") return t.status==="active" && i.left!==null && i.left>=0 && i.left<=settings.warn;
+  if(f==="expired") return t.status==="active" && i.left!==null && i.left<=0;
+  if(f==="done") return t.status!=="active";
+  return true;
+}
+function matchesQuery(t,q){
+  if(!q) return true; q=q.toLowerCase();
+  return [t.num,t.job,t.loc,t.notes,t.prevNum].some(function(v){ return v && String(v).toLowerCase().indexOf(q)>=0; });
+}
+function sorted(list){
+  return list.slice().sort(function(a,b){
+    var ca=a.status!=="active", cb=b.status!=="active";
+    if(ca!==cb) return ca?1:-1;
+    var ea=isISO(a.expires)?dn(a.expires):9e9, eb=isISO(b.expires)?dn(b.expires):9e9;
+    return ca ? eb-ea : ea-eb;
+  });
+}
+
+/* ---------- parser for pasted ticket text ---------- */
+var MONTHS={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,sept:9,oct:10,nov:11,dec:12};
+function y4(y){ y=+y; return y<100 ? 2000+y : y; }
+function mk(y,m,d){ y=y4(y); m=+m; d=+d; if(m<1||m>12||d<1||d>31||y<1990||y>2200) return ""; var s=y+"-"+pad(m)+"-"+pad(d); return fromDn(dn(s))===s?s:""; }
+function parseDate(v){
+  if(!v) return "";
+  var m;
+  if((m=/(\d{4})-(\d{1,2})-(\d{1,2})/.exec(v))) return mk(m[1],m[2],m[3]);
+  if((m=/\b(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})\b/.exec(v))) return mk(m[3],m[1],m[2]);
+  if((m=/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})/i.exec(v))) return mk(m[3],MONTHS[m[1].toLowerCase()],m[2]);
+  if((m=/\b(\d{1,2})\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?,?\s+(\d{4})/i.exec(v))) return mk(m[3],MONTHS[m[2].toLowerCase()],m[1]);
+  return "";
+}
+function field(text, labels){
+  for(var i=0;i<labels.length;i++){
+    var re=new RegExp("(?:^|[\\s|*])"+labels[i]+"[^:\\n]{0,25}?[:#]\\s*([^\\n]*?)(?=\\s{2,}[A-Za-z][A-Za-z .\\/#'-]{1,30}:|\\s*\\|\\s*|\\s*$)","im");
+    var m=re.exec(text); if(m && m[1] && m[1].trim()) return m[1].trim();
+  }
+  return "";
+}
+function dateField(text, labels){
+  for(var i=0;i<labels.length;i++){
+    var re=new RegExp(labels[i]+"[^:\\n]{0,25}?:\\s*([^\\n]{0,60})","ig"), m;
+    while((m=re.exec(text))){ var d=parseDate(m[1]); if(d) return d; }
+  }
+  return "";
+}
+function parseTicket(text){
+  text=String(text||"").replace(/\r/g,"").replace(/\u00a0/g," ");
+  var out={}, found=[];
+  var numRe=/(?:ticket|tkt|locate request|request|confirmation)\s*(?:no\.?|number|num|#|id)?\s*[:#]?\s*#?\s*([A-Z]{0,3}\d{6,14}(?:-\d{1,4})?)/i, m=numRe.exec(text);
+  if(!m) m=/\b(\d{9,12})\b/.exec(text);
+  if(m){ out.num=m[1]; found.push("ticket #"); }
+  var upd=/(?:update of|updates?|original ticket|previous ticket|renewal of|old ticket)\s*(?:ticket|tkt)?\s*(?:no\.?|number|#)?\s*[:#]?\s*#?\s*([A-Z]{0,3}\d{6,14})/i.exec(text);
+  if(upd && upd[1]!==out.num){ out.prevNum=upd[1]; found.push("update of #"+upd[1]); }
+  var called=dateField(text,["original call date","call date","date called","called","taken","notice date","notification date","created","entered","received","transmit(?:ted)? date"]);
+  var start=dateField(text,["work to begin","work date","work begins","legal start","start date","excavation start","begin date","dig date","dig start","start"]);
+  var exp=dateField(text,["expiration date","expiration","expires","expire date","valid until","valid through","good through","good thru","ticket expires"]);
+  if(called){ out.called=called; found.push("called date"); }
+  if(start){ out.start=start; found.push("start date"); }
+  if(exp){ out.expires=exp; found.push("expiration"); }
+  var addr=field(text,["work site address","site address","address","street address","location of work","work location","dig site","location"]);
+  var street=field(text,["street"]);
+  var inter=field(text,["nearest intersecting street","nearest intersection","intersection","cross street"]);
+  var place=field(text,["place","city","town"]);
+  var county=field(text,["county"]);
+  var loc=addr || street;
+  if(loc && inter && loc.toLowerCase().indexOf(inter.toLowerCase())<0) loc+=" (near "+inter+")";
+  if(!loc && inter) loc="Near "+inter;
+  if(loc && place && loc.toLowerCase().indexOf(place.toLowerCase())<0) loc+=", "+place;
+  if(!loc && (place||county)) loc=[place,county&&county+" County"].filter(Boolean).join(", ");
+  if(loc){ out.loc=loc.replace(/\s{2,}/g," "); found.push("location"); }
+  var job=field(text,["job name","job","project","done for","work for"]);
+  var wt=field(text,["type of work","work type","nature of work"]);
+  if(job||wt){ out.job=job||wt; found.push("job"); }
+  var notes=[];
+  if(wt && job) notes.push("Work: "+wt);
+  var membersIdx=text.search(/(members notified|utilities notified|operators notified|districts notified|positive response|members:)/i);
+  if(membersIdx>=0){ var blk=text.slice(membersIdx, membersIdx+600).split("\n").slice(0,12).map(function(s){return s.trim();}).filter(Boolean).join("\n"); notes.push(blk); }
+  if(notes.length) out.notes=notes.join("\n");
+  out.found=found;
+  return out;
+}
+
+/* ---------- rendering ---------- */
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+function $(id){ return document.getElementById(id); }
+function plural(n,w){ return n+" "+w+(n===1?"":"s"); }
+function dayBox(t,i){
+  if(i.closed) return '<div class="days"><div class="big word">'+(t.status==="done"?"DONE":"RENEWED")+'</div></div>';
+  if(i.left===null) return '<div class="days"><div class="big">?</div><div class="lbl">no date</div></div>';
+  if(i.left<0) return '<div class="days"><div class="big word">EXPIRED</div><div class="lbl">'+plural(-i.left,"day")+' ago</div></div>';
+  if(i.left===0) return '<div class="days"><div class="big word">TODAY</div><div class="lbl">expires</div></div>';
+  return '<div class="days"><div class="big">'+i.left+'</div><div class="lbl">'+(i.left===1?"day left":"days left")+'</div></div>';
+}
+function card(t,today){
+  var i=info(t,today), h=[];
+  h.push('<div class="card '+i.level+'" data-id="'+esc(t.id)+'">'+dayBox(t,i)+'<div class="info">');
+  h.push('<div class="tnum">#'+esc(t.num||"(no number)")+(t.demo?' <span class="pill grey">DEMO</span>':'')+'</div>');
+  if(t.job) h.push('<div class="job">'+esc(t.job)+'</div>');
+  if(t.loc) h.push('<div class="loc">'+esc(t.loc)+'</div>');
+  h.push('<div class="lines">');
+  if(!i.closed && i.startIn!==null && i.startIn>0) h.push('<div><span class="pill blue">Can dig from '+esc(nice(t.start))+(i.startIn===1?" (tomorrow)":" (in "+i.startIn+" days)")+'</span></div>');
+  h.push('<div>Expires <b>'+esc(niceY(t.expires))+'</b></div>');
+  if(!i.closed && i.left!==null && i.left>0 && i.updBy){
+    if(i.updLeft<0) h.push('<div><span class="pill red">Update deadline passed ('+esc(nice(i.updBy))+') - call for a new ticket</span></div>');
+    else if(i.updLeft<=settings.warn) h.push('<div><span class="pill amber">Call for update by '+esc(nice(i.updBy))+(i.updLeft===0?" (TODAY)":"")+'</span></div>');
+    else h.push('<div class="meta">Call for update by '+esc(nice(i.updBy))+'</div>');
+  }
+  h.push('<div class="meta">Called '+esc(nice(t.called))+' &middot; dig from '+esc(nice(t.start))+'</div>');
+  var chain=[];
+  if(t.updateNo>0) chain.push('Update '+t.updateNo+' of '+settings.maxUpdates);
+  if(t.prevNum) chain.push('was #'+esc(t.prevNum));
+  if(t.renewedToNum) chain.push('renewed as #'+esc(t.renewedToNum));
+  if(chain.length) h.push('<div class="meta">'+chain.join(' &middot; ')+'</div>');
+  h.push('</div>');
+  if(t.notes) h.push('<div class="notes">'+esc(t.notes.length>220?t.notes.slice(0,220)+"...":t.notes)+'</div>');
+  h.push('<div class="actions">');
+  if(t.status==="active") h.push('<button class="btn small good" data-act="renew">Renew</button>');
+  h.push('<button class="btn small" data-act="edit">Edit</button>');
+  if(t.status==="active") h.push('<button class="btn small" data-act="done">Mark done</button>');
+  else h.push('<button class="btn small" data-act="reopen">Reopen</button>');
+  h.push('</div></div></div>');
+  return h.join("");
+}
+var FILTERS=[["all","All"],["active","Active"],["soon","Expiring soon"],["expired","Expired"],["done","Done"]];
+function render(){
+  var today=todayISO();
+  $("todayLbl").textContent="Today: "+niceY(today);
+  $("chips").innerHTML=FILTERS.map(function(f){
+    var n=tickets.filter(function(t){return matchesFilter(t,f[0],today);}).length;
+    return '<button class="chip'+(filter===f[0]?" on":"")+'" data-f="'+f[0]+'">'+f[1]+'<span class="n">'+n+'</span></button>';
+  }).join("");
+  var list=sorted(tickets.filter(function(t){ return matchesFilter(t,filter,today) && matchesQuery(t,query); }));
+  if(!tickets.length) $("list").innerHTML='<div class="empty"><b>No tickets yet.</b><br>Tap <b>+ Add</b> after you call 811, or paste the ticket email.<br><br><button class="btn" id="emptyDemo">Load demo tickets to try it</button></div>';
+  else if(!list.length) $("list").innerHTML='<div class="empty">Nothing matches.</div>';
+  else $("list").innerHTML=list.map(function(t){return card(t,today);}).join("");
+  renderBanner(today);
+  $("clearDemoBtn").style.display=tickets.some(function(t){return t.demo;})?"":"none";
+}
+function renderBanner(today){
+  var hidden=lsGet(KEY_B);
+  var hot=sorted(tickets.filter(function(t){ var i=info(t,today); return t.status==="active" && i.left!==null && i.left<=settings.warn; }));
+  if(!hot.length || hidden===today+":"+hot.length){ $("banner").innerHTML=""; return; }
+  var anyBad=hot.some(function(t){return info(t,today).left<=0;});
+  $("banner").innerHTML='<div class="banner'+(anyBad?" red":"")+'"><div class="row"><h2>'+(hot.length===1?"1 ticket needs attention":hot.length+" tickets need attention")+'</h2><button class="x" id="bannerX" aria-label="Hide">&times;</button></div><ul>'+
+    hot.map(function(t){ var l=info(t,today).left; return '<li><b>#'+esc(t.num)+'</b> '+esc(t.job||t.loc||"")+' &mdash; '+(l<0?"expired "+plural(-l,"day")+" ago":l===0?"expires TODAY":"expires in "+plural(l,"day"))+'</li>'; }).join("")+'</ul></div>';
+}
+function rulesHTML(){
+  var S=settings;
+  return '<p><b>Call 811 or use the SD 811 Portal</b> at least <b>'+S.wait+' business days</b> before you dig. The wait starts at 12:01 a.m. the day after you call; weekends and state holidays don\'t count. Don\'t dig before the start date and time on the ticket.</p>'+
+  '<p><b>Ticket life:</b> marks are good for <b>'+S.life+' calendar days</b> after the start date, as long as they are still clearly visible.</p>'+
+  '<p><b>Need longer?</b> Ask 811 for an <b>Update</b> ticket before the end of <b>day '+S.upd+'</b>. Give them the old ticket number. It adds another '+S.life+' days and gets the site remarked (locators get 48 hours). You can keep digging on the old ticket until the new one starts, if the old one hasn\'t expired. Max <b>'+S.maxUpdates+' updates</b> and <b>'+S.span+' days</b> from the first start date. Then you need a brand-new ticket. Changed work area? New ticket, not an update.</p>'+
+  '<p><b>Marks faded or gone?</b> Ask for a <b>Respot</b> (remark) with your ticket number. Locators have 24 hours (business days). A respot does <b>not</b> extend the expiration.</p>'+
+  '<a class="callbtn" href="tel:811">Call 811</a><a class="linkbtn" href="https://sdgc.southdakota811.com/geocall/portal" target="_blank" rel="noopener">SD 811 Portal (online tickets)</a><a class="linkbtn" href="https://www.sdonecall.com/excavator" target="_blank" rel="noopener">sdonecall.com excavator info</a>';
+}
+
+/* ---------- toast ---------- */
+var toastT;
+function toast(msg){ var el=$("toast"); if(!el) return; el.textContent=msg; el.style.display="block"; clearTimeout(toastT); toastT=setTimeout(function(){el.style.display="none";},2400); }
+
+/* ---------- add / edit ---------- */
+var editing=null, auto={start:true,exp:true};
+function openSheet(id){ $(id).classList.add("open"); document.body.style.overflow="hidden"; $(id).querySelector(".panel").scrollTop=0; }
+function closeSheet(id){ $(id).classList.remove("open"); document.body.style.overflow=""; }
+function setStatus(v){ var r=document.querySelectorAll('input[name="f_status"]'); for(var i=0;i<r.length;i++) r[i].checked=(r[i].value===v); }
+function getStatus(){ var r=document.querySelector('input[name="f_status"]:checked'); return r?r.value:"active"; }
+function openEdit(t){
+  editing=t?t.id:null;
+  $("editTitle").textContent=t?"Edit ticket":"Add ticket";
+  $("f_num").value=t?t.num||"":"";
+  $("f_job").value=t?t.job||"":"";
+  $("f_loc").value=t?t.loc||"":"";
+  var called=t?t.called:todayISO();
+  $("f_called").value=called||"";
+  $("f_start").value=t?t.start||"":calcStart(called);
+  $("f_exp").value=t?t.expires||"":calcExpire($("f_start").value);
+  $("f_notes").value=t?t.notes||"":"";
+  setStatus(t?t.status:"active");
+  auto.start=!t || t.start===calcStart(t.called);
+  auto.exp=!t || t.expires===calcExpire(t.start);
+  $("deleteBtn").style.display=t?"":"none";
+  $("pasteBox").open=!t; $("pasteText").value=""; $("parseMsg").innerHTML=""; $("formMsg").innerHTML="";
+  updateCalcHints();
+  openSheet("editSheet");
+}
+function updateCalcHints(){
+  var c=$("f_called").value, s=$("f_start").value, e=$("f_exp").value;
+  var cs=calcStart(c), ce=calcExpire(s);
+  $("startCalc").innerHTML = cs ? (s===cs?"Auto: "+settings.wait+" business days after the call ("+esc(nice(cs))+"). Change it to match your ticket.":'Rule says '+esc(nice(cs))+'. <button type="button" data-fix="start">Use that</button>') : "";
+  $("expCalc").innerHTML = ce ? (e===ce?"Auto: start + "+settings.life+" days ("+esc(nice(ce))+"). Change it to match your ticket.":'Rule says '+esc(nice(ce))+'. <button type="button" data-fix="exp">Use that</button>') : "";
+}
+function onCalledChange(){ if(auto.start){ $("f_start").value=calcStart($("f_called").value); onStartChange(true); } updateCalcHints(); }
+function onStartChange(fromAuto){ if(!fromAuto) auto.start=($("f_start").value===calcStart($("f_called").value)); if(auto.exp) $("f_exp").value=calcExpire($("f_start").value); updateCalcHints(); }
+function onExpChange(){ auto.exp=($("f_exp").value===calcExpire($("f_start").value)); updateCalcHints(); }
+function formData(){
+  return { num:$("f_num").value.trim(), job:$("f_job").value.trim(), loc:$("f_loc").value.trim(), called:$("f_called").value, start:$("f_start").value, expires:$("f_exp").value, notes:$("f_notes").value.trim(), status:getStatus() };
+}
+function validate(d){
+  var errs=[];
+  if(!d.num) errs.push("Enter the ticket number.");
+  if(!isISO(d.called)) errs.push("Pick the called-in date.");
+  if(!isISO(d.start)) errs.push("Pick the start date.");
+  if(!isISO(d.expires)) errs.push("Pick the expiration date.");
+  if(!errs.length && dn(d.expires)<dn(d.start)) errs.push("Expiration is before the start date.");
+  if(!errs.length && dn(d.start)<dn(d.called)) errs.push("Start date is before the called-in date.");
+  return errs;
+}
+function upsert(d, id){
+  var now=new Date().toISOString();
+  if(id){ var t=byId(id); if(!t) return null; for(var k in d) t[k]=d[k]; t.updated=now; saveTickets(); return t; }
+  var nt={ id:uid(), num:d.num, job:d.job||"", loc:d.loc||"", called:d.called, start:d.start, expires:d.expires, notes:d.notes||"", status:d.status||"active",
+    updateNo:d.updateNo||0, origStart:d.origStart||d.start, prevId:d.prevId||null, prevNum:d.prevNum||"", renewedToId:null, renewedToNum:"", demo:!!d.demo, created:now, updated:now };
+  tickets.push(nt); saveTickets(); return nt;
+}
+function removeTicket(id){
+  var t=byId(id); if(!t) return false;
+  tickets=tickets.filter(function(x){return x.id!==id;});
+  tickets.forEach(function(x){ if(x.prevId===id) x.prevId=null; if(x.renewedToId===id){ x.renewedToId=null; } });
+  saveTickets(); return true;
+}
+function setStatusOf(id,st){ var t=byId(id); if(!t) return; t.status=st; t.updated=new Date().toISOString(); saveTickets(); }
+
+/* ---------- renew ---------- */
+var renewing=null;
+function chainInfo(t){ return { updatesUsed:t.updateNo||0, origStart:t.origStart||t.start }; }
+function openRenew(t){
+  renewing=t.id;
+  var c=chainInfo(t), S=settings, today=todayISO(), i=info(t,today);
+  var canUpdate=c.updatesUsed<S.maxUpdates && i.left!==null && i.left>0;
+  var spanEnd=addDays(c.origStart,S.span);
+  var m=[];
+  m.push('<div class="msg '+(i.level==="ok"?"ok":i.level==="warn"?"warn":"bad")+'">Ticket <b>#'+esc(t.num)+'</b> expires <b>'+esc(niceY(t.expires))+'</b>'+(i.updBy?' &middot; call for update by <b>'+esc(nice(i.updBy))+'</b>':'')+'. Updates used: '+c.updatesUsed+' of '+S.maxUpdates+'.</div>');
+  if(!canUpdate) m.push('<div class="msg bad">'+(i.left!==null&&i.left<=0?"This ticket has expired, so it can't be updated.":"This ticket has used all its updates.")+' Call in a <b>new ticket</b> and wait the '+S.wait+' business days.</div>');
+  $("renewInfo").innerHTML=m.join("");
+  $("renewGuide").innerHTML='<b>How to renew</b><ol><li>Call <b>811</b> (or use the Portal) before the end of day '+S.upd+'.</li><li>Give them ticket <b>#'+esc(t.num)+'</b> and ask for an <b>Update</b> ticket (same work area only).</li><li>Write down the new ticket number and enter it below.</li></ol><p class="small" style="margin:4px 0">Marks just faded? Ask for a <b>Respot</b> instead; it doesn\'t change the expiration, so you don\'t need a new ticket here. Max '+S.maxUpdates+' updates, and not past '+esc(niceY(spanEnd))+' ('+S.span+' days from the first start).</p><a class="callbtn" href="tel:811">Call 811</a><a class="linkbtn" href="https://sdgc.southdakota811.com/geocall/portal" target="_blank" rel="noopener">SD 811 Portal</a>';
+  var kinds=document.querySelectorAll('input[name="r_kind"]');
+  kinds[0].disabled=!canUpdate; kinds[0].checked=canUpdate; kinds[1].checked=!canUpdate;
+  $("r_num").value=""; $("r_called").value=today; $("renewMsg").innerHTML="";
+  recalcRenew();
+  openSheet("renewSheet");
+}
+function renewKind(){ var r=document.querySelector('input[name="r_kind"]:checked'); return r?r.value:"new"; }
+function renewDates(old, called, kind, S){
+  S=S||settings;
+  var start=calcStart(called,S), exp=calcExpire(start,S), capped=false;
+  if(kind==="update"){ var cap=addDays(old.origStart||old.start,S.span); if(isISO(exp)&&dn(exp)>dn(cap)){ exp=cap; capped=true; } }
+  return {start:start, expires:exp, capped:capped};
+}
+function recalcRenew(){
+  var t=byId(renewing); if(!t) return;
+  var r=renewDates(t,$("r_called").value,renewKind());
+  $("r_start").value=r.start; $("r_exp").value=r.expires;
+  $("r_calc").textContent=r.start?("Auto from the rules"+(r.capped?" (capped at "+settings.span+" days from first start)":"")+". Change to match the new ticket."):"";
+}
+function doRenew(oldId, d){
+  var old=byId(oldId); if(!old) return null;
+  var kind=d.kind||"update";
+  var nt=upsert({ num:d.num, job:old.job, loc:old.loc, called:d.called, start:d.start, expires:d.expires,
+    notes:(kind==="update"?"Update of #":"Replaces #")+old.num+(old.notes?"\n"+old.notes:""), status:"active",
+    updateNo: kind==="update" ? (old.updateNo||0)+1 : 0, origStart: kind==="update" ? (old.origStart||old.start) : d.start,
+    prevId:old.id, prevNum:old.num, demo:old.demo });
+  old.status="renewed"; old.renewedToId=nt.id; old.renewedToNum=nt.num; old.updated=new Date().toISOString();
+  saveTickets(); return nt;
+}
+
+/* ---------- backup ---------- */
+function exportData(){ return { app:"811-ticket-tracker", version:1, exported:new Date().toISOString(), settings:settings, tickets:tickets }; }
+function importData(obj){
+  if(!obj || typeof obj!=="object") throw new Error("Not a backup file.");
+  var list=Array.isArray(obj)?obj:obj.tickets;
+  if(!Array.isArray(list)) throw new Error("No tickets found in that file.");
+  var added=0, updated=0;
+  list.forEach(function(t){
+    if(!t || typeof t!=="object" || !t.num) return;
+    if(typeof t.id!=="string") t.id=uid();
+    var cur=byId(t.id);
+    if(cur){ for(var k in t) cur[k]=t[k]; updated++; } else { tickets.push(t); added++; }
+  });
+  if(obj.settings && typeof obj.settings==="object"){ for(var k in DEFAULTS) if(k in obj.settings) settings[k]=obj.settings[k]; lsSet(KEY_S,JSON.stringify(settings)); }
+  saveTickets();
+  return {added:added, updated:updated};
+}
+function download(name, text){
+  var blob=new Blob([text],{type:"application/json"}), url=URL.createObjectURL(blob), a=document.createElement("a");
+  a.href=url; a.download=name; document.body.appendChild(a); a.click();
+  setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); },1000);
+}
+
+/* ---------- demo ---------- */
+function demoTickets(today){
+  today=today||todayISO();
+  function mkT(num,job,loc,calledOff,notes,extra){ var c=addDays(today,calledOff), s=calcStart(c), o={num:num,job:job,loc:loc,called:c,start:s,expires:calcExpire(s),notes:notes,status:"active",demo:true}; for(var k in extra) o[k]=extra[k]; return o; }
+  return [
+    mkT("2600000101","DEMO - Main St fiber bore","100 Example St (near 1st Ave), Rapid City",-3,"Fake demo ticket",{}),
+    mkT("2600000102","DEMO - Service line trench","200 Sample Rd, Rapid City",-21,"Fake demo ticket. Close to expiring.",{}),
+    mkT("2600000103","DEMO - Conduit to pedestal","300 Test Ln, Rapid City",-27,"Fake demo ticket. Expired.",{}),
+    mkT("2600000104","DEMO - Drainage tile","400 Placeholder Ave, Box Elder",0,"Fake demo ticket. Just called in.",{}),
+    mkT("2600000105","DEMO - Finished water tap","500 Mock Blvd, Rapid City",-30,"Fake demo ticket",{status:"done"})
+  ];
+}
+
+/* ---------- wire up UI ---------- */
+function syncSettingsForm(){ $("s_life").value=settings.life; $("s_wait").value=settings.wait; $("s_warn").value=settings.warn; $("s_upd").value=settings.upd; $("s_maxu").value=settings.maxUpdates; $("s_span").value=settings.span; $("s_roll").checked=!!settings.roll; $("rulesText").innerHTML=rulesHTML(); }
+function init(){
+  syncSettingsForm(); render();
+  $("addBtn").onclick=function(){ openEdit(null); };
+  $("editCancel").onclick=function(){ closeSheet("editSheet"); };
+  $("renewCancel").onclick=function(){ closeSheet("renewSheet"); };
+  $("search").oninput=function(){ query=this.value.trim(); render(); };
+  $("chips").onclick=function(e){ var b=e.target.closest(".chip"); if(b){ filter=b.getAttribute("data-f"); render(); } };
+  $("banner").onclick=function(e){ if(e.target.id==="bannerX"){ var today=todayISO(); var n=tickets.filter(function(t){var i=info(t,today);return t.status==="active"&&i.left!==null&&i.left<=settings.warn;}).length; lsSet(KEY_B,today+":"+n); render(); } };
+  $("list").onclick=function(e){
+    if(e.target.id==="emptyDemo"){ loadDemo(); return; }
+    var b=e.target.closest("button[data-act]"); if(!b) return;
+    var t=byId(b.closest(".card").getAttribute("data-id")); if(!t) return;
+    var a=b.getAttribute("data-act");
+    if(a==="edit") openEdit(t);
+    else if(a==="renew") openRenew(t);
+    else if(a==="done"){ setStatusOf(t.id,"done"); render(); toast("Marked #"+t.num+" done"); }
+    else if(a==="reopen"){ setStatusOf(t.id,"active"); render(); toast("Reopened #"+t.num); }
+  };
+  $("f_called").onchange=onCalledChange; $("f_start").onchange=function(){onStartChange(false);}; $("f_exp").onchange=onExpChange;
+  $("startCalc").onclick=$("expCalc").onclick=function(e){ var f=e.target.getAttribute&&e.target.getAttribute("data-fix"); if(f==="start"){ auto.start=true; onCalledChange(); } if(f==="exp"){ auto.exp=true; onStartChange(true); } };
+  $("editForm").onsubmit=function(e){
+    e.preventDefault(); var d=formData(), errs=validate(d);
+    if(errs.length){ $("formMsg").innerHTML='<div class="msg bad">'+errs.map(esc).join("<br>")+'</div>'; return; }
+    var dup=tickets.filter(function(x){return x.num===d.num && x.id!==editing;});
+    if(dup.length && !confirm("You already have ticket #"+d.num+". Save another copy anyway?")) return;
+    if(!editing && pendingPrev) { d.prevNum=pendingPrev; }
+    upsert(d,editing); pendingPrev=""; closeSheet("editSheet"); render(); toast("Saved #"+d.num);
+  };
+  $("deleteBtn").onclick=function(){ var t=byId(editing); if(t && confirm("Delete ticket #"+t.num+"? This can't be undone.")){ removeTicket(t.id); closeSheet("editSheet"); render(); toast("Deleted #"+t.num); } };
+  $("pasteClear").onclick=function(){ $("pasteText").value=""; $("parseMsg").innerHTML=""; };
+  $("parseBtn").onclick=function(){
+    var p=parseTicket($("pasteText").value);
+    if(!p.found.length){ $("parseMsg").innerHTML='<div class="msg warn">Couldn\'t find ticket details in that text. Fill in the form by hand.</div>'; return; }
+    if(p.num) $("f_num").value=p.num;
+    if(p.job) $("f_job").value=p.job;
+    if(p.loc) $("f_loc").value=p.loc;
+    if(p.called) $("f_called").value=p.called;
+    if(p.start){ $("f_start").value=p.start; auto.start=false; } else if(auto.start) $("f_start").value=calcStart($("f_called").value);
+    if(p.expires){ $("f_exp").value=p.expires; auto.exp=false; } else { $("f_exp").value=calcExpire($("f_start").value); auto.exp=true; }
+    if(p.notes) $("f_notes").value=p.notes+($("f_notes").value?"\n"+$("f_notes").value:"");
+    pendingPrev=p.prevNum||"";
+    var missing=["ticket #","called date","start date","expiration","location"].filter(function(k){return p.found.indexOf(k)<0;});
+    $("parseMsg").innerHTML='<div class="msg ok">Found: '+esc(p.found.join(", "))+'.'+(missing.length?' Not found: '+esc(missing.join(", "))+' (check those below).':'')+' Double-check against the ticket.</div>';
+    updateCalcHints();
+  };
+  document.querySelectorAll('input[name="r_kind"]').forEach(function(r){ r.onchange=recalcRenew; });
+  $("r_called").onchange=recalcRenew;
+  $("renewForm").onsubmit=function(e){
+    e.preventDefault();
+    var d={ kind:renewKind(), num:$("r_num").value.trim(), called:$("r_called").value, start:$("r_start").value, expires:$("r_exp").value };
+    var errs=validate(d); if(errs.length){ $("renewMsg").innerHTML='<div class="msg bad">'+errs.map(esc).join("<br>")+'</div>'; return; }
+    var old=byId(renewing); if(old && d.num===old.num){ $("renewMsg").innerHTML='<div class="msg bad">That\'s the old ticket number. Enter the new one 811 gave you.</div>'; return; }
+    var nt=doRenew(renewing,d); closeSheet("renewSheet"); render(); toast("Saved new ticket #"+nt.num);
+  };
+  $("exportBtn").onclick=function(){ download("811-tickets-backup-"+todayISO()+".json", JSON.stringify(exportData(),null,2)); $("backupMsg").innerHTML='<div class="msg ok">Backup saved ('+plural(tickets.length,"ticket")+'). Check your Downloads.</div>'; };
+  $("importBtn").onclick=function(){ $("importFile").value=""; $("importFile").click(); };
+  $("importFile").onchange=function(){
+    var f=this.files&&this.files[0]; if(!f) return; var rd=new FileReader();
+    rd.onload=function(){ try{ var r=importData(JSON.parse(rd.result)); syncSettingsForm(); render(); $("backupMsg").innerHTML='<div class="msg ok">Imported: '+r.added+' new, '+r.updated+' updated.</div>'; }catch(err){ $("backupMsg").innerHTML='<div class="msg bad">Import failed: '+esc(err.message)+'</div>'; } };
+    rd.readAsText(f);
+  };
+  $("saveSettings").onclick=function(){
+    var n=function(id,min,max){ var v=parseInt($(id).value,10); return isNaN(v)?null:Math.min(max,Math.max(min,v)); };
+    var s={ life:n("s_life",1,365), wait:n("s_wait",0,20), warn:n("s_warn",0,30), upd:n("s_upd",1,365), maxUpdates:n("s_maxu",0,20), span:n("s_span",1,999), roll:$("s_roll").checked };
+    for(var k in s) if(s[k]===null){ $("settingsMsg").innerHTML='<div class="msg bad">Fill in every number.</div>'; return; }
+    settings=s; lsSet(KEY_S,JSON.stringify(s)); syncSettingsForm(); render();
+    $("settingsMsg").innerHTML='<div class="msg ok">Saved. Existing tickets keep their dates; new ones use these rules.</div>';
+  };
+  $("resetSettings").onclick=function(){ settings=JSON.parse(JSON.stringify(DEFAULTS)); lsSet(KEY_S,JSON.stringify(settings)); syncSettingsForm(); render(); $("settingsMsg").innerHTML='<div class="msg ok">Back to South Dakota defaults.</div>'; };
+  $("demoBtn").onclick=loadDemo;
+  $("clearDemoBtn").onclick=function(){ var n=tickets.filter(function(t){return t.demo;}).length; tickets=tickets.filter(function(t){return !t.demo;}); saveTickets(); render(); toast("Removed "+plural(n,"demo ticket")); };
+  // refresh day counts if the app stays open past midnight or comes back to the foreground
+  var lastDay=todayISO();
+  document.addEventListener("visibilitychange",function(){ if(!document.hidden && todayISO()!==lastDay){ lastDay=todayISO(); render(); } });
+  setInterval(function(){ if(todayISO()!==lastDay){ lastDay=todayISO(); render(); } },60000);
+}
+var pendingPrev="";
+function loadDemo(){ if(tickets.some(function(t){return t.demo;})){ toast("Demo tickets already loaded"); return; } demoTickets().forEach(function(d){ upsert(d,null); }); render(); toast("Loaded demo tickets"); }
+
+window.__T811 = { dn:dn, addDays:addDays, diffDays:diffDays, todayISO:todayISO, dow:dow, holidays:holidays, isBiz:isBiz, calcStart:calcStart, calcExpire:calcExpire, calcUpdateBy:calcUpdateBy,
+  parseTicket:parseTicket, parseDate:parseDate, info:info, matchesFilter:matchesFilter, sorted:sorted, upsert:upsert, removeTicket:removeTicket, doRenew:doRenew, renewDates:renewDates,
+  exportData:exportData, importData:importData, demoTickets:demoTickets, loadDemo:loadDemo, render:render, openEdit:openEdit, openRenew:openRenew,
+  get tickets(){ return tickets; }, set tickets(v){ tickets=v; }, get settings(){ return settings; }, reload:function(){ settings=loadSettings(); tickets=loadTickets(); }, DEFAULTS:DEFAULTS };
+if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",init); else init();
+})();
+/* ---------- installable app (PWA) ---------- */
+(function(){
+  var deferred=null, bar=document.getElementById("installBar"), btn=document.getElementById("installBtn"), hint=document.getElementById("installHint");
+  function standalone(){ return (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || window.navigator.standalone===true; }
+  if(bar && !standalone()) bar.classList.add("show");
+  window.addEventListener("beforeinstallprompt",function(e){ e.preventDefault(); deferred=e; if(bar && !standalone()) bar.classList.add("show"); if(hint) hint.textContent="Put 811 Tickets on your home screen"; });
+  window.addEventListener("appinstalled",function(){ deferred=null; if(bar) bar.classList.remove("show"); });
+  if(btn) btn.onclick=function(){
+    if(deferred){ deferred.prompt(); var d=deferred; deferred=null; if(d.userChoice) d.userChoice.then(function(r){ if(r && r.outcome==="accepted" && bar) bar.classList.remove("show"); }); }
+    else if(hint){ hint.innerHTML="<b>Chrome menu &#8942; &rarr; Add to Home screen</b>"; }
+  };
+  if("serviceWorker" in navigator && /^https?:$/.test(location.protocol)){
+    window.addEventListener("load",function(){ navigator.serviceWorker.register("sw.js",{scope:"./"}).catch(function(err){ console.warn("SW register failed",err); }); });
+  }
+})();
+</script>
+</body>
+</html>
