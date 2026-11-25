@@ -1,7 +1,7 @@
 /* 811 Ticket Tracker service worker.
    Caches only the app files. Ticket data lives in localStorage, which this worker never touches,
    so installing or updating the worker can't delete tickets. Bump VERSION when app files change. */
-var VERSION = "811-tracker-v1";
+var VERSION = "811-tracker-v2";
 var SHELL = [
   "./",
   "./index.html",

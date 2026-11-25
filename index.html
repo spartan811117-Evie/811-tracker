@@ -115,6 +115,11 @@ textarea.inp{min-height:90px;resize:vertical}
 .installbar{display:none;align-items:center;gap:10px;margin:0 0 12px}
 .installbar.show{display:flex}
 .installbar .hint{flex:1;font-size:14px;color:var(--dim)}
+.countdown{border-radius:14px;padding:12px 14px;margin:0 0 12px;border:2px solid var(--green);background:var(--green-bg)}
+.countdown.warn{border-color:var(--amber);background:var(--amber-bg)}
+.countdown.bad{border-color:var(--red);background:var(--red-bg)}
+.countdown .cd{font-size:19px;font-weight:900}
+.countdown .sub{font-size:15px;color:#d4dbe4;margin-top:2px}
 </style>
 </head>
 <body>
@@ -126,6 +131,7 @@ textarea.inp{min-height:90px;resize:vertical}
   </header>
 
   <div class="installbar" id="installBar"><button class="btn small" id="installBtn">Install app</button><span class="hint" id="installHint">Put 811 Tickets on your home screen</span></div>
+  <div id="countdown"></div>
   <div id="banner"></div>
 
   <input class="search" id="search" type="search" placeholder="Search ticket #, job, address, notes" autocomplete="off">
@@ -146,6 +152,9 @@ textarea.inp{min-height:90px;resize:vertical}
         <button class="btn" id="importBtn">Import backup</button>
       </div>
       <input type="file" id="importFile" accept=".json,application/json" class="sr">
+      <p>Or paste backup / ticket list text. It merges by ticket number and never deletes tickets.</p>
+      <textarea class="inp" id="importText" placeholder="Paste backup JSON here"></textarea>
+      <div class="actions"><button class="btn" id="importTextBtn">Import pasted text</button></div>
       <div id="backupMsg"></div>
     </div>
   </details>
@@ -254,11 +263,12 @@ function dn(s){ var p=s.split("-"); return Math.round(Date.UTC(+p[0],+p[1]-1,+p[
 function fromDn(n){ var d=new Date(n*86400000); return d.getUTCFullYear()+"-"+pad(d.getUTCMonth()+1)+"-"+pad(d.getUTCDate()); }
 function addDays(s,n){ return fromDn(dn(s)+n); }
 function diffDays(a,b){ return dn(a)-dn(b); } // a - b
-function todayISO(now){ var d=now||new Date(); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+function todayISO(now){ var d=now||new Date(); try{ var s=new Intl.DateTimeFormat("en-CA",{timeZone:"America/Denver",year:"numeric",month:"2-digit",day:"2-digit"}).format(d); if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s; }catch(e){} return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); } // Mountain time (SD 811 dates)
 function dow(s){ return ((dn(s)%7)+7+4)%7; } // 0=Sun (1970-01-01 was Thursday)
 var MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 var DAY=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 function nice(s){ if(!isISO(s)) return "?"; var p=s.split("-"); return DAY[dow(s)]+" "+MON[+p[1]-1]+" "+(+p[2]); }
+function md(s){ if(!isISO(s)) return "?"; var p=s.split("-"); return DAY[dow(s)]+" "+(+p[1])+"/"+(+p[2]); }
 function niceY(s){ if(!isISO(s)) return "?"; return nice(s)+", "+s.slice(0,4); }
 
 // South Dakota legal holidays (SDCL 1-5-1) with Sat->Fri / Sun->Mon substitution.
@@ -313,8 +323,27 @@ function info(t, today){
   var closed = t.status!=="active";
   var level = closed ? "closed" : (left===null ? "warn" : (left<=0 ? "bad" : (left<=settings.warn ? "warn" : "ok")));
   var startIn = isISO(t.start)? diffDays(t.start,today) : null;
-  var updBy = calcUpdateBy(t.start);
+  var updBy = isISO(t.updateBy) ? t.updateBy : calcUpdateBy(t.start); // date printed on the ticket wins
   return { left:left, level:level, closed:closed, startIn:startIn, updBy:updBy, updLeft: updBy?diffDays(updBy,today):null };
+}
+// Can this ticket take another update, or will it need a new ticket?
+function outlook(t, S){
+  S=S||settings; var used=t.updateNo||0, left=S.maxUpdates-used;
+  if(left<=0) return { ok:false, why:"update limit", text:"Needs new ticket (update limit: "+used+" of "+S.maxUpdates+" used)" };
+  var cap=addDays(t.origStart||t.start, S.span);
+  if(!isISO(t.expires) || !isISO(cap)) return { ok:true, left:left, text:"Update OK ("+left+" left)" };
+  if(dn(addDays(t.expires,S.life))<=dn(cap)) return { ok:true, left:left, text:"Update OK ("+left+" left)" };
+  if(dn(cap)>dn(t.expires)) return { ok:true, left:left, capped:cap, text:"Update OK ("+left+" left) - "+S.span+"-day cap cuts it short: ends "+md(cap) };
+  return { ok:false, why:S.span+"-day cap", text:"Needs new ticket ("+S.span+"-day cap reached "+md(cap)+")" };
+}
+function countdown(today){
+  today=today||todayISO();
+  var act=tickets.filter(function(t){ var i=info(t,today); return t.status==="active" && !t.doNotFlag && i.left!==null && i.left>0 && i.updBy; });
+  if(!act.length) return null;
+  var next=act.reduce(function(m,t){ var u=info(t,today).updBy; return (!m||dn(u)<dn(m))?u:m; },"");
+  var due=act.filter(function(t){ return info(t,today).updBy===next; });
+  var days=diffDays(next,today);
+  return { date:next, days:days, count:due.length, total:act.length, tickets:due, level: days<=1?"bad":(days<=4?"warn":"ok") };
 }
 function matchesFilter(t,f,today){
   var i=info(t,today);
@@ -407,7 +436,7 @@ function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){retu
 function $(id){ return document.getElementById(id); }
 function plural(n,w){ return n+" "+w+(n===1?"":"s"); }
 function dayBox(t,i){
-  if(i.closed) return '<div class="days"><div class="big word">'+(t.status==="done"?"DONE":"RENEWED")+'</div></div>';
+  if(i.closed) return '<div class="days"><div class="big word">'+esc(({done:"DONE",renewed:"RENEWED","let-expire":"LET EXPIRE",replaced:"REPLACED",canceled:"CANCELED"})[t.status]||String(t.status).toUpperCase())+'</div></div>';
   if(i.left===null) return '<div class="days"><div class="big">?</div><div class="lbl">no date</div></div>';
   if(i.left<0) return '<div class="days"><div class="big word">EXPIRED</div><div class="lbl">'+plural(-i.left,"day")+' ago</div></div>';
   if(i.left===0) return '<div class="days"><div class="big word">TODAY</div><div class="lbl">expires</div></div>';
@@ -427,6 +456,7 @@ function card(t,today){
     else if(i.updLeft<=settings.warn) h.push('<div><span class="pill amber">Call for update by '+esc(nice(i.updBy))+(i.updLeft===0?" (TODAY)":"")+'</span></div>');
     else h.push('<div class="meta">Call for update by '+esc(nice(i.updBy))+'</div>');
   }
+  if(!i.closed){ var o=outlook(t); h.push('<div><span class="pill '+(o.ok?(o.capped?"amber":"blue"):"red")+'">'+esc(o.text)+'</span></div>'); }
   h.push('<div class="meta">Called '+esc(nice(t.called))+' &middot; dig from '+esc(nice(t.start))+'</div>');
   var chain=[];
   if(t.updateNo>0) chain.push('Update '+t.updateNo+' of '+settings.maxUpdates);
@@ -438,7 +468,7 @@ function card(t,today){
   h.push('<div class="actions">');
   if(t.status==="active") h.push('<button class="btn small good" data-act="renew">Renew</button>');
   h.push('<button class="btn small" data-act="edit">Edit</button>');
-  if(t.status==="active") h.push('<button class="btn small" data-act="done">Mark done</button>');
+  if(t.status==="active") h.push('<button class="btn small" data-act="done">Mark done</button><button class="btn small" data-act="letexpire">Let expire</button>');
   else h.push('<button class="btn small" data-act="reopen">Reopen</button>');
   h.push('</div></div></div>');
   return h.join("");
@@ -455,8 +485,15 @@ function render(){
   if(!tickets.length) $("list").innerHTML='<div class="empty"><b>No tickets yet.</b><br>Tap <b>+ Add</b> after you call 811, or paste the ticket email.<br><br><button class="btn" id="emptyDemo">Load demo tickets to try it</button></div>';
   else if(!list.length) $("list").innerHTML='<div class="empty">Nothing matches.</div>';
   else $("list").innerHTML=list.map(function(t){return card(t,today);}).join("");
+  renderCountdown(today);
   renderBanner(today);
   $("clearDemoBtn").style.display=tickets.some(function(t){return t.demo;})?"":"none";
+}
+function renderCountdown(today){
+  var c=countdown(today);
+  if(!c){ $("countdown").innerHTML=""; return; }
+  var head = c.days>1 ? "Next update-by in "+c.days+" days ("+md(c.date)+")" : c.days===1 ? "Next update-by is tomorrow ("+md(c.date)+")" : c.days===0 ? "Update-by is TODAY ("+md(c.date)+")" : "Update-by passed "+plural(-c.days,"day")+" ago ("+md(c.date)+")";
+  $("countdown").innerHTML='<div class="countdown '+c.level+'"><div class="cd">'+esc(head)+'</div><div class="sub">'+plural(c.count,"ticket")+' due that day'+(c.total>c.count?' &middot; '+c.total+' active':'')+'</div></div>';
 }
 function renderBanner(today){
   var hidden=lsGet(KEY_B);
@@ -484,7 +521,7 @@ var editing=null, auto={start:true,exp:true};
 function openSheet(id){ $(id).classList.add("open"); document.body.style.overflow="hidden"; $(id).querySelector(".panel").scrollTop=0; }
 function closeSheet(id){ $(id).classList.remove("open"); document.body.style.overflow=""; }
 function setStatus(v){ var r=document.querySelectorAll('input[name="f_status"]'); for(var i=0;i<r.length;i++) r[i].checked=(r[i].value===v); }
-function getStatus(){ var r=document.querySelector('input[name="f_status"]:checked'); return r?r.value:"active"; }
+function getStatus(){ var r=document.querySelector('input[name="f_status"]:checked'), t=editing&&byId(editing); return r?r.value:(t&&t.status)||"active"; }
 function openEdit(t){
   editing=t?t.id:null;
   $("editTitle").textContent=t?"Edit ticket":"Add ticket";
@@ -528,7 +565,7 @@ function validate(d){
 }
 function upsert(d, id){
   var now=new Date().toISOString();
-  if(id){ var t=byId(id); if(!t) return null; for(var k in d) t[k]=d[k]; t.updated=now; saveTickets(); return t; }
+  if(id){ var t=byId(id); if(!t) return null; if(d.start && d.start!==t.start && !("updateBy" in d)) delete t.updateBy; for(var k in d) t[k]=d[k]; t.updated=now; saveTickets(); return t; }
   var nt={ id:uid(), num:d.num, job:d.job||"", loc:d.loc||"", called:d.called, start:d.start, expires:d.expires, notes:d.notes||"", status:d.status||"active",
     updateNo:d.updateNo||0, origStart:d.origStart||d.start, prevId:d.prevId||null, prevNum:d.prevNum||"", renewedToId:null, renewedToNum:"", demo:!!d.demo, created:now, updated:now };
   tickets.push(nt); saveTickets(); return nt;
@@ -592,14 +629,23 @@ function importData(obj){
   if(!Array.isArray(list)) throw new Error("No tickets found in that file.");
   var added=0, updated=0;
   list.forEach(function(t){
+    if(t && typeof t==="object" && !t.num && t.number) t=fromList(t);
     if(!t || typeof t!=="object" || !t.num) return;
-    if(typeof t.id!=="string") t.id=uid();
+    if(typeof t.id!=="string"){ var same=tickets.filter(function(x){ return x.num===t.num; })[0]; t.id=same?same.id:uid(); if(same && same.notes && t.notes===undefined) delete t.notes; }
     var cur=byId(t.id);
     if(cur){ for(var k in t) cur[k]=t[k]; updated++; } else { tickets.push(t); added++; }
   });
   if(obj.settings && typeof obj.settings==="object"){ for(var k in DEFAULTS) if(k in obj.settings) settings[k]=obj.settings[k]; lsSet(KEY_S,JSON.stringify(settings)); }
   saveTickets();
   return {added:added, updated:updated};
+}
+// Map a ticket from the shared ticket list ({number, location, calledIn, updateBy, updateCount, originalStart, ...}).
+function fromList(x){
+  var o={ num:String(x.number), status:x.status||"active", updated:new Date().toISOString() };
+  var map={ job:"job", location:"loc", calledIn:"called", start:"start", expires:"expires", updateBy:"updateBy", updateCount:"updateNo", originalStart:"origStart", previous:"prevNum", next:"renewedToNum", doNotFlag:"doNotFlag" };
+  for(var k in map) if(x[k]!==undefined && x[k]!==null) o[map[k]]=x[k];
+  if(!tickets.some(function(t){ return t.num===o.num; })){ o.notes=x.notes||""; o.created=o.updated; if(!o.called) o.called=o.start; if(!o.origStart) o.origStart=o.start; if(!o.updateNo) o.updateNo=0; }
+  return o;
 }
 function download(name, text){
   var blob=new Blob([text],{type:"application/json"}), url=URL.createObjectURL(blob), a=document.createElement("a");
@@ -638,6 +684,7 @@ function init(){
     if(a==="edit") openEdit(t);
     else if(a==="renew") openRenew(t);
     else if(a==="done"){ setStatusOf(t.id,"done"); render(); toast("Marked #"+t.num+" done"); }
+    else if(a==="letexpire"){ if(confirm("Let #"+t.num+" expire? It leaves the active list and countdown.")){ setStatusOf(t.id,"let-expire"); render(); toast("#"+t.num+" will be left to expire"); } }
     else if(a==="reopen"){ setStatusOf(t.id,"active"); render(); toast("Reopened #"+t.num); }
   };
   $("f_called").onchange=onCalledChange; $("f_start").onchange=function(){onStartChange(false);}; $("f_exp").onchange=onExpChange;
@@ -683,6 +730,9 @@ function init(){
     rd.onload=function(){ try{ var r=importData(JSON.parse(rd.result)); syncSettingsForm(); render(); $("backupMsg").innerHTML='<div class="msg ok">Imported: '+r.added+' new, '+r.updated+' updated.</div>'; }catch(err){ $("backupMsg").innerHTML='<div class="msg bad">Import failed: '+esc(err.message)+'</div>'; } };
     rd.readAsText(f);
   };
+  $("importTextBtn").onclick=function(){
+    try{ var r=importData(JSON.parse($("importText").value)); syncSettingsForm(); render(); $("importText").value=""; $("backupMsg").innerHTML='<div class="msg ok">Imported: '+r.added+' new, '+r.updated+' updated.</div>'; }catch(err){ $("backupMsg").innerHTML='<div class="msg bad">Import failed: '+esc(err.message)+'</div>'; }
+  };
   $("saveSettings").onclick=function(){
     var n=function(id,min,max){ var v=parseInt($(id).value,10); return isNaN(v)?null:Math.min(max,Math.max(min,v)); };
     var s={ life:n("s_life",1,365), wait:n("s_wait",0,20), warn:n("s_warn",0,30), upd:n("s_upd",1,365), maxUpdates:n("s_maxu",0,20), span:n("s_span",1,999), roll:$("s_roll").checked };
@@ -702,7 +752,7 @@ var pendingPrev="";
 function loadDemo(){ if(tickets.some(function(t){return t.demo;})){ toast("Demo tickets already loaded"); return; } demoTickets().forEach(function(d){ upsert(d,null); }); render(); toast("Loaded demo tickets"); }
 
 window.__T811 = { dn:dn, addDays:addDays, diffDays:diffDays, todayISO:todayISO, dow:dow, holidays:holidays, isBiz:isBiz, calcStart:calcStart, calcExpire:calcExpire, calcUpdateBy:calcUpdateBy,
-  parseTicket:parseTicket, parseDate:parseDate, info:info, matchesFilter:matchesFilter, sorted:sorted, upsert:upsert, removeTicket:removeTicket, doRenew:doRenew, renewDates:renewDates,
+  parseTicket:parseTicket, parseDate:parseDate, info:info, outlook:outlook, countdown:countdown, md:md, matchesFilter:matchesFilter, sorted:sorted, upsert:upsert, removeTicket:removeTicket, doRenew:doRenew, renewDates:renewDates,
   exportData:exportData, importData:importData, demoTickets:demoTickets, loadDemo:loadDemo, render:render, openEdit:openEdit, openRenew:openRenew,
   get tickets(){ return tickets; }, set tickets(v){ tickets=v; }, get settings(){ return settings; }, reload:function(){ settings=loadSettings(); tickets=loadTickets(); }, DEFAULTS:DEFAULTS };
 if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",init); else init();
